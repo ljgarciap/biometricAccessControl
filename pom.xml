@@ -63,6 +63,12 @@
 			<scope>test</scope>
 		</dependency>
 
+        <!-- Seguridad -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+
         <!-- Export CSV -->
         <dependency>
             <groupId>com.opencsv</groupId>
