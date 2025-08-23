@@ -41,13 +41,18 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/css/**", "/js/**", "/h2/**", "/login", "/error").permitAll()
                         .requestMatchers("/personas/**", "/enrolar/**", "/export/**").hasRole("ADMIN")
-                        .requestMatchers("/verificar/**", "/").hasAnyRole("ADMIN", "USER")
+                        .requestMatchers("/verificar/**", "/", "/dashboard").hasAnyRole("ADMIN", "USER") // 👈 añadimos dashboard
                         .anyRequest().authenticated()
                 )
                 .headers(h -> h.frameOptions(f -> f.disable())) // necesario para consola H2
-                .formLogin(form -> form.loginPage("/login").permitAll().defaultSuccessUrl("/", true))
-                .logout(Customizer.withDefaults());
+                .formLogin(form -> form
+                        .loginPage("/login")
+                        .defaultSuccessUrl("/dashboard", true) // 👈 dashboard como destino después del login
+                        .permitAll()
+                )
+                .logout(logout -> logout.permitAll());
 
         return http.build();
     }
+
 }
