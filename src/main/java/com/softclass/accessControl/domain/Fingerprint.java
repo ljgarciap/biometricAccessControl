@@ -18,7 +18,7 @@ public class Fingerprint {
         private String format; // ANSI_378, ISO_19794_2, DP_PROP
 
         @Lob
-        @Column(length = 2048)
+        @Column(columnDefinition = "VARBINARY")
         private byte[] template; // template biométrico
 
         @ManyToOne(optional = false)

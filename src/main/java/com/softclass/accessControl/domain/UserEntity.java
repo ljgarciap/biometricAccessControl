@@ -11,7 +11,9 @@ import java.util.Set;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class User {
+@Table(name = "users")
+public class UserEntity {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -20,12 +22,12 @@ public class User {
     private String username;
 
     @Column(nullable = false)
-    private String password; // BCrypt
+    private String password; // BCrypt hash
 
     private boolean enabled = true;
 
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "user_roles", joinColumns = @JoinColumn(name = "user_id"))
     @Column(name = "rol")
-    private Set<String> roles; // "ROLE_ADMIN", "ROLE_USER"
+    private Set<String> roles; // Ej: "ROLE_ADMIN", "ROLE_USER"
 }

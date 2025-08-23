@@ -1,10 +1,10 @@
 package com.softclass.accessControl.repo;
 
-import com.softclass.accessControl.domain.User;
+import com.softclass.accessControl.domain.UserEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;
 
-public interface UserRepository extends JpaRepository<User, Long> {
-    Optional<User> findByUsername(String userName);
+public interface UserRepository extends JpaRepository<UserEntity, Long> {
+    Optional<UserEntity> findByUsername(String userName);
 }
