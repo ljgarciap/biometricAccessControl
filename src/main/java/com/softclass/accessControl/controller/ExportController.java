@@ -28,7 +28,9 @@ public class ExportController {
     private final AccessRepository ingresoRepo;
 
     @GetMapping("/menu")
-    public String menu() { return "reportes"; }
+    public String menu() {
+        return "reportes";
+    }
 
     @GetMapping("/csv")
     public void exportCsv(HttpServletResponse resp,
