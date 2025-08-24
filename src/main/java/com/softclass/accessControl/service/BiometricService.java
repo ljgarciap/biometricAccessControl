@@ -1,10 +1,15 @@
 package com.softclass.accessControl.service;
 
 public interface BiometricService {
-        byte[] captureTemplate();
-        boolean verify(byte[] templateCaptured, byte[] templateInBD);
-        default int score(byte[] a, byte[] b) {
-            return verify(a,b) ? 100 : 0;
-        }
-        String format(); // ej. SIMULADO, DP_PROP, ANSI_378
+    default byte[] captureTemplate() {
+        return captureTemplate(null);
     }
+
+    // Permite que el mock genere siempre lo mismo para un userId
+    byte[] captureTemplate(String contextKey);
+
+    boolean verify(byte[] templateCaptured, byte[] templateInDB);
+
+    String format();
+}
+

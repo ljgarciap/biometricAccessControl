@@ -41,15 +41,19 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/css/**", "/js/**", "/h2/**", "/login", "/error").permitAll()
                         .requestMatchers("/personas/**", "/enrolar/**", "/export/**").hasRole("ADMIN")
-                        .requestMatchers("/verificar/**", "/", "/dashboard").hasAnyRole("ADMIN", "USER") // 👈 añadimos dashboard
+                        .requestMatchers("/verificar/**", "/", "/dashboard").hasAnyRole("ADMIN", "USER")
+                        .requestMatchers("/api/**").hasAnyRole("ADMIN", "USER") // 👉 API protegida
                         .anyRequest().authenticated()
                 )
-                .headers(h -> h.frameOptions(f -> f.disable())) // necesario para consola H2
+                .headers(h -> h.frameOptions(f -> f.disable()))
+                // 👇 Aquí mantienes el login web
                 .formLogin(form -> form
                         .loginPage("/login")
-                        .defaultSuccessUrl("/dashboard", true) // 👈 dashboard como destino después del login
+                        .defaultSuccessUrl("/dashboard", true)
                         .permitAll()
                 )
+                // 👇 Y añades soporte a Basic Auth (para Postman)
+                .httpBasic(Customizer.withDefaults())
                 .logout(logout -> logout.permitAll());
 
         return http.build();
