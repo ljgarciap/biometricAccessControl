@@ -5,6 +5,7 @@ import com.softclass.accessControl.domain.Persona;
 import com.softclass.accessControl.repo.AttendanceRepository;
 import com.softclass.accessControl.repo.PersonaRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,75 +22,64 @@ public class VerificationService {
     private final AttendanceRepository attendanceRepository;
     private final PersonaRepository personaRepository;
 
+    @Value("${biometric.provider:mock}")
+    private String provider;
+
     /**
      * Marca entrada o salida automáticamente según la última marca del día.
-     * Si es la primera marca del día, se considera "IN".
-     * Si ya existe al menos una marca, se alterna entre IN y OUT.
-     * Actualiza incomplete=false si ya hay entrada y salida.
      */
     @Transactional
     public Attendance verifyAndSave(Long userId) {
         LocalDateTime now = LocalDateTime.now();
-
-        // Obtener marcas del día
         LocalDate today = now.toLocalDate();
         LocalDateTime startOfDay = today.atStartOfDay();
         LocalDateTime endOfDay = today.atTime(LocalTime.MAX);
 
+        // Obtener marcas del día
         List<Attendance> todays = attendanceRepository.findByUserIdAndTimestampBetween(userId, startOfDay, endOfDay);
 
         // Inicializar incomplete en datos antiguos si es null
-        todays.forEach(a -> {
-            if (a.getIncomplete() == null) a.setIncomplete(false);
-        });
+        todays.forEach(a -> { if (a.getIncomplete() == null) a.setIncomplete(false); });
 
-        String type;
-        if (todays.isEmpty()) {
-            type = "IN";
-        } else {
-            // Alternar según última marca del día
+        // Determinar tipo IN/OUT
+        String type = "IN";
+        if (!todays.isEmpty()) {
             Attendance last = todays.get(todays.size() - 1);
-            type = "IN".equals(last.getType()) ? "OUT" : "IN";
+            type = "IN".equalsIgnoreCase(last.getType()) ? "OUT" : "IN";
+        }
+
+        // Simulación o huellero real
+        if ("mock".equalsIgnoreCase(provider)) {
+            System.out.println("Usando mock para userId: " + userId);
+        } else {
+            System.out.println("Llamando a huellero real: " + provider + " para userId: " + userId);
+            // Integración con SDK/servicio real aquí
         }
 
         Attendance attendance = new Attendance();
         attendance.setUserId(userId);
         attendance.setType(type);
         attendance.setTimestamp(now);
-        attendance.setIncomplete(true); // se asumirá incompleta hasta tener al menos IN y OUT
-
-        // Guardar
+        attendance.setIncomplete(true);
         attendanceRepository.save(attendance);
 
-        // Re-evaluar incomplete si ya hay al menos IN y OUT
+        // Re-evaluar incomplete
         List<Attendance> updatedList = attendanceRepository.findByUserIdAndTimestampBetween(userId, startOfDay, endOfDay);
         boolean hasIn = updatedList.stream().anyMatch(a -> "IN".equalsIgnoreCase(a.getType()));
         boolean hasOut = updatedList.stream().anyMatch(a -> "OUT".equalsIgnoreCase(a.getType()));
-
         if (hasIn && hasOut) {
-            updatedList.forEach(a -> {
-                a.setIncomplete(false);
-                attendanceRepository.save(a);
-            });
+            updatedList.forEach(a -> a.setIncomplete(false));
+            attendanceRepository.saveAll(updatedList);
         }
 
         return attendance;
     }
 
-    /**
-     * Genera un reporte diario de asistencia por usuario.
-     * Incluye nombre, cantidad de entradas/salidas, timestamps exactos y flag incomplete.
-     */
     @Transactional(readOnly = true)
     public List<DailyAttendanceReport> getDailyReports() {
         List<Attendance> all = attendanceRepository.findAll();
+        all.forEach(a -> { if (a.getIncomplete() == null) a.setIncomplete(false); });
 
-        // Inicializar incomplete si es null
-        all.forEach(a -> {
-            if (a.getIncomplete() == null) a.setIncomplete(false);
-        });
-
-        // Agrupar por usuario y luego por fecha
         Map<Long, Map<LocalDate, List<Attendance>>> grouped = all.stream()
                 .collect(Collectors.groupingBy(
                         Attendance::getUserId,
@@ -129,7 +119,6 @@ public class VerificationService {
         return reports;
     }
 
-    // Obtener todas las asistencias (para el GET /attendances)
     @Transactional(readOnly = true)
     public List<Attendance> getAllAttendances() {
         List<Attendance> all = attendanceRepository.findAll();
@@ -137,17 +126,12 @@ public class VerificationService {
         return all;
     }
 
-    // Crear asistencia manual (para POST /attendances)
     @Transactional
     public Attendance createAttendance(Attendance attendance) {
         if (attendance.getIncomplete() == null) attendance.setIncomplete(false);
         return attendanceRepository.save(attendance);
     }
 
-
-    /**
-     * DTO para reporte diario
-     */
     public record DailyAttendanceReport(
             Long userId,
             String name,
@@ -157,4 +141,9 @@ public class VerificationService {
             List<LocalDateTime> timestamps,
             boolean incomplete
     ) {}
+
+    // Getter para controller
+    public boolean isUseMock() {
+        return "mock".equalsIgnoreCase(provider);
+    }
 }

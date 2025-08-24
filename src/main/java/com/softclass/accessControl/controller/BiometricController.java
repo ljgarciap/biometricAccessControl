@@ -14,42 +14,30 @@ public class BiometricController {
 
     private final VerificationService verificationService;
 
-    /**
-     * Enrolar un usuario (simulado)
-     */
     @PostMapping("/enrolar/{id}")
     public String enrolar(@PathVariable Long id) {
-        // Simulación: no persiste nada real
-        return "Usuario " + id + " enrolado (mock).";
+        if (verificationService.isUseMock()) {
+            return "Usuario " + id + " enrolado (mock).";
+        } else {
+            return "Usuario " + id + " enrolado en huellero real (pendiente SDK).";
+        }
     }
 
-    /**
-     * Verificar huella → marcar entrada/salida automáticamente
-     */
     @PostMapping("/verificar/{id}")
     public Attendance verificar(@PathVariable Long id) {
         return verificationService.verifyAndSave(id);
     }
 
-    /**
-     * Listar todas las asistencias
-     */
     @GetMapping("/attendances")
     public List<Attendance> listAll() {
         return verificationService.getAllAttendances();
     }
 
-    /**
-     * Crear una asistencia manualmente (opcional)
-     */
     @PostMapping("/attendances")
     public Attendance create(@RequestBody Attendance attendance) {
         return verificationService.createAttendance(attendance);
     }
 
-    /**
-     * Generar reporte diario de asistencias
-     */
     @GetMapping("/reporte")
     public List<VerificationService.DailyAttendanceReport> reporte() {
         return verificationService.getDailyReports();
