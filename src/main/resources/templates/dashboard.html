@@ -1,10 +1,12 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
-    <title th:text="${title}">Dashboard</title>
+    <title>Dashboard</title>
 </head>
 <body>
-<h1>Bienvenido al Dashboard</h1>
-<p>Aquí pondremos el contenido después del login.</p>
+<div th:replace="~{layout :: content}">
+    <h1>Bienvenido al Dashboard</h1>
+    <p>Este es el panel de administrador.</p>
+</div>
 </body>
 </html>

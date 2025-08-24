@@ -9,7 +9,8 @@ public class DashboardController {
 
     @GetMapping("/dashboard")
     public String dashboard(Model model) {
-        model.addAttribute("title", "Dashboard principal");
-        return "dashboard"; // busca dashboard.html en templates/
+        model.addAttribute("title", "Dashboard");
+        model.addAttribute("content", "dashboard");
+        return "layout";
     }
 }
