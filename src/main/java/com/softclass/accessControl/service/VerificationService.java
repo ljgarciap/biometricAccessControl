@@ -1,5 +1,6 @@
 package com.softclass.accessControl.service;
 
+import com.softclass.accessControl.biometric.BiometricDevice;
 import com.softclass.accessControl.domain.Attendance;
 import com.softclass.accessControl.domain.Persona;
 import com.softclass.accessControl.repo.AttendanceRepository;
@@ -21,13 +22,11 @@ public class VerificationService {
 
     private final AttendanceRepository attendanceRepository;
     private final PersonaRepository personaRepository;
+    private final BiometricDevice biometricDevice;
 
     @Value("${biometric.provider:mock}")
     private String provider;
 
-    /**
-     * Marca entrada o salida automáticamente según la última marca del día.
-     */
     @Transactional
     public Attendance verifyAndSave(Long userId) {
         LocalDateTime now = LocalDateTime.now();
@@ -35,25 +34,18 @@ public class VerificationService {
         LocalDateTime startOfDay = today.atStartOfDay();
         LocalDateTime endOfDay = today.atTime(LocalTime.MAX);
 
-        // Obtener marcas del día
         List<Attendance> todays = attendanceRepository.findByUserIdAndTimestampBetween(userId, startOfDay, endOfDay);
-
-        // Inicializar incomplete en datos antiguos si es null
         todays.forEach(a -> { if (a.getIncomplete() == null) a.setIncomplete(false); });
 
-        // Determinar tipo IN/OUT
         String type = "IN";
         if (!todays.isEmpty()) {
             Attendance last = todays.get(todays.size() - 1);
             type = "IN".equalsIgnoreCase(last.getType()) ? "OUT" : "IN";
         }
 
-        // Simulación o huellero real
-        if ("mock".equalsIgnoreCase(provider)) {
-            System.out.println("Usando mock para userId: " + userId);
-        } else {
-            System.out.println("Llamando a huellero real: " + provider + " para userId: " + userId);
-            // Integración con SDK/servicio real aquí
+        // Registrar huella en sistema si no es mock
+        if (!"mock".equalsIgnoreCase(provider)) {
+            System.out.println("Verificación con SDK: " + provider);
         }
 
         Attendance attendance = new Attendance();
@@ -98,10 +90,7 @@ public class VerificationService {
 
                 int ins = (int) list.stream().filter(a -> "IN".equalsIgnoreCase(a.getType())).count();
                 int outs = (int) list.stream().filter(a -> "OUT".equalsIgnoreCase(a.getType())).count();
-                List<LocalDateTime> timestamps = list.stream()
-                        .map(Attendance::getTimestamp)
-                        .sorted()
-                        .toList();
+                List<LocalDateTime> timestamps = list.stream().map(Attendance::getTimestamp).sorted().toList();
                 boolean incomplete = list.stream().anyMatch(a -> Boolean.TRUE.equals(a.getIncomplete()));
 
                 reports.add(new DailyAttendanceReport(
@@ -141,9 +130,4 @@ public class VerificationService {
             List<LocalDateTime> timestamps,
             boolean incomplete
     ) {}
-
-    // Getter para controller
-    public boolean isUseMock() {
-        return "mock".equalsIgnoreCase(provider);
-    }
 }

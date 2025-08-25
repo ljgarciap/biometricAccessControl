@@ -1,10 +1,12 @@
 package com.softclass.accessControl.controller;
 
+import com.softclass.accessControl.biometric.BiometricDevice;
 import com.softclass.accessControl.domain.Attendance;
 import com.softclass.accessControl.domain.Persona;
 import com.softclass.accessControl.repo.PersonaRepository;
 import com.softclass.accessControl.service.VerificationService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -18,31 +20,56 @@ public class BiometricController {
 
     private final VerificationService verificationService;
     private final PersonaRepository personaRepository;
+    private final BiometricDevice biometricDevice;
 
     /**
-     * Enrolar un usuario (mock/huellero) y crear Persona si no existe
+     * Enrolar huella y crear Persona si no existe
      */
-    @PostMapping("/enrolar/{id}")
-    public ResponseEntity<String> enrolar(@PathVariable Long id) {
-        Persona persona = personaRepository.findById(id).orElseGet(() -> {
-            // Crear automáticamente persona desconocida si no existe
-            Persona p = new Persona();
-            p.setId(id);
-            p.setName("Desconocido");
-            p.setDocument("unknown-" + id);
-            p.setRole("USER");
-            return personaRepository.save(p);
-        });
+    @PostMapping("/enrolar/{document}")
+    public ResponseEntity<String> enrolar(@PathVariable String document) {
+        Persona persona = personaRepository.findByDocument(document)
+                .orElseGet(() -> {
+                    Persona p = new Persona();
+                    p.setDocument(document);
+                    p.setName("Desconocido");
+                    p.setRole("USER");
+                    return personaRepository.save(p);
+                });
 
-        return ResponseEntity.ok("Usuario " + persona.getName() + " enrolado correctamente (mock).");
+        boolean success = biometricDevice.enroll(document);
+        if (!success) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error al enrolar huella para " + document);
+        }
+
+        return ResponseEntity.ok("Huella enrolada para " + persona.getName());
     }
 
     /**
-     * Crear persona manualmente
+     * Verificar huella y registrar asistencia
+     */
+    @PostMapping("/verificar")
+    public ResponseEntity<?> verificar() {
+        String document = biometricDevice.verify();
+        if (document == null) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Huella no reconocida");
+        }
+
+        Optional<Persona> persona = personaRepository.findByDocument(document);
+        if (persona.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body("Persona con documento " + document + " no existe");
+        }
+
+        Attendance attendance = verificationService.verifyAndSave(persona.get().getId());
+        return ResponseEntity.ok(attendance);
+    }
+
+    /**
+     * Crear persona manual
      */
     @PostMapping("/personas")
     public ResponseEntity<?> crearPersona(@RequestBody Persona persona) {
-        // Validar duplicado por documento
         Optional<Persona> existing = personaRepository.findByDocument(persona.getDocument());
         if (existing.isPresent()) {
             return ResponseEntity.badRequest().body("Persona con documento ya existe: " + persona.getDocument());
@@ -52,14 +79,13 @@ public class BiometricController {
     }
 
     /**
-     * Editar persona existente
+     * Editar persona
      */
     @PutMapping("/personas/{id}")
     public ResponseEntity<?> editarPersona(@PathVariable Long id, @RequestBody Persona persona) {
         Optional<Persona> existing = personaRepository.findById(id);
-        if (existing.isEmpty()) {
-            return ResponseEntity.notFound().build();
-        }
+        if (existing.isEmpty()) return ResponseEntity.notFound().build();
+
         Persona p = existing.get();
         p.setName(persona.getName());
         p.setDocument(persona.getDocument());
@@ -72,16 +98,8 @@ public class BiometricController {
      * Listar personas
      */
     @GetMapping("/personas")
-    public List<Persona> findAll(){
-     return personaRepository.findAll();
-    }
-
-    /**
-     * Verificar huella → marcar entrada/salida automáticamente
-     */
-    @PostMapping("/verificar/{id}")
-    public Attendance verificar(@PathVariable Long id) {
-        return verificationService.verifyAndSave(id);
+    public List<Persona> findAll() {
+        return personaRepository.findAll();
     }
 
     /**
@@ -93,7 +111,7 @@ public class BiometricController {
     }
 
     /**
-     * Crear asistencia manualmente (opcional)
+     * Crear asistencia manual
      */
     @PostMapping("/attendances")
     public Attendance create(@RequestBody Attendance attendance) {
@@ -101,11 +119,10 @@ public class BiometricController {
     }
 
     /**
-     * Generar reporte diario de asistencias
+     * Reporte diario
      */
     @GetMapping("/reporte")
     public List<VerificationService.DailyAttendanceReport> reporte() {
         return verificationService.getDailyReports();
     }
-
 }
