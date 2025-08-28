@@ -2,9 +2,12 @@ package com.softclass.accessControl.controller;
 
 import com.softclass.accessControl.biometric.BiometricDevice;
 import com.softclass.accessControl.domain.Attendance;
+import com.softclass.accessControl.domain.Fingerprint;
 import com.softclass.accessControl.domain.Persona;
+import com.softclass.accessControl.repo.FingerprintRepository;
 import com.softclass.accessControl.repo.PersonaRepository;
 import com.softclass.accessControl.service.VerificationService;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -21,6 +24,15 @@ public class BiometricController {
     private final VerificationService verificationService;
     private final PersonaRepository personaRepository;
     private final BiometricDevice biometricDevice;
+    private final FingerprintRepository fingerprintRepository;
+
+    /**
+     * Inicializa el dispositivo biométrico al arrancar el controlador.
+     */
+    @PostConstruct
+    public void init() {
+        biometricDevice.initialize();
+    }
 
     /**
      * Enrolar huella y crear Persona si no existe
@@ -36,11 +48,16 @@ public class BiometricController {
                     return personaRepository.save(p);
                 });
 
-        boolean success = biometricDevice.enroll(document);
-        if (!success) {
+        byte[] template = biometricDevice.captureTemplate(document);
+        if (template == null) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Error al enrolar huella para " + document);
+                    .body("No se pudo capturar huella para " + document);
         }
+
+        Fingerprint fingerprint = new Fingerprint();
+        fingerprint.setPersona(persona);
+        fingerprint.setTemplate(template);
+        fingerprintRepository.save(fingerprint);
 
         return ResponseEntity.ok("Huella enrolada para " + persona.getName());
     }
@@ -50,19 +67,22 @@ public class BiometricController {
      */
     @PostMapping("/verificar")
     public ResponseEntity<?> verificar() {
-        String document = biometricDevice.verify();
-        if (document == null) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Huella no reconocida");
+        byte[] captured = biometricDevice.captureTemplate("verify");
+        if (captured == null) {
+            return ResponseEntity.badRequest().body("No se pudo capturar huella");
         }
 
-        Optional<Persona> persona = personaRepository.findByDocument(document);
-        if (persona.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body("Persona con documento " + document + " no existe");
+        // Buscar contra todas las huellas en DB
+        List<Fingerprint> allFingerprints = fingerprintRepository.findAll();
+        for (Fingerprint fp : allFingerprints) {
+            if (biometricDevice.verify(captured, fp.getTemplate())) {
+                Persona persona = fp.getPersona();
+                Attendance attendance = verificationService.verifyAndSave(persona.getId());
+                return ResponseEntity.ok(attendance);
+            }
         }
 
-        Attendance attendance = verificationService.verifyAndSave(persona.get().getId());
-        return ResponseEntity.ok(attendance);
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Huella no reconocida");
     }
 
     /**

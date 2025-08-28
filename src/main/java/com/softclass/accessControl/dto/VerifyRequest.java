@@ -6,5 +6,4 @@ import org.antlr.v4.runtime.misc.NotNull;
 @Data
 public class VerifyRequest {
    @NotNull
-        private String document; // ayuda para 1:1
-    }
+        private String documentId;    }

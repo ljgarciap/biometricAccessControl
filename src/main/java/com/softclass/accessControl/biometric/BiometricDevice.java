@@ -1,15 +1,21 @@
 package com.softclass.accessControl.biometric;
 
 public interface BiometricDevice {
-    /**
-     * Enrolar la huella asociada a un documento.
-     * Devuelve true si se enrola correctamente.
-     */
-    boolean enroll(String document);
+    void initialize();
 
     /**
-     * Verificar huella y devolver el documento asociado.
-     * Devuelve null si no se reconoce.
+     * Captura la plantilla desde el lector.
+     * @param contextKey puede ser el documento u otro identificador lógico.
      */
-    String verify();
+    byte[] captureTemplate(String contextKey);
+
+    /**
+     * Verifica si dos plantillas coinciden.
+     */
+    boolean verify(byte[] templateCaptured, byte[] templateInDB);
+
+    /**
+     * Nombre del dispositivo (DigitalPersona, Hamster, Mock...).
+     */
+    String format();
 }
