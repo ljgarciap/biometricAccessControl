@@ -4,17 +4,16 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public class MockDevice implements BiometricDevice {
 
-    private final AtomicBoolean initialized = new AtomicBoolean(false);
-
+    private boolean initialized = false;
     @Override
     public void initialize() {
-        initialized.set(true);
+        initialized=true;
         System.out.println("[MOCK] Device initialized");
     }
 
     @Override
     public byte[] captureTemplate(String contextKey) {
-        if (!initialized.get()) {
+        if (!initialized) {
             throw new IllegalStateException("Device not initialized");
         }
         // Simula un template único por contexto
@@ -30,5 +29,10 @@ public class MockDevice implements BiometricDevice {
     @Override
     public String format() {
         return "MOCK_DEVICE";
+    }
+
+    @Override
+    public boolean isInitialized() {
+        return initialized;
     }
 }

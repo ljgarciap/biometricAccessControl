@@ -13,13 +13,13 @@ import com.digitalpersona.onetouch.verification.DPFPVerification;
 import com.digitalpersona.onetouch.verification.DPFPVerificationResult;
 import com.digitalpersona.onetouch.verification._impl.DPFPVerificationFactoryImpl;
 import com.digitalpersona.onetouch._impl.DPFPTemplateFactoryImpl;
-import org.springframework.stereotype.Component;
 
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
-@Component
 public class DigitalPersonaDevice implements BiometricDevice {
+
+    private boolean initialized = false;
 
     private DPFPCapture capture;
     private byte[] lastTemplateData;
@@ -74,6 +74,12 @@ public class DigitalPersonaDevice implements BiometricDevice {
             System.err.println("Error inicializando dispositivo: " + ex.getMessage());
             ex.printStackTrace();
         }
+        initialized = true;
+    }
+
+    @Override
+    public boolean isInitialized() {
+        return initialized;
     }
 
     private void processSample(DPFPData sample) {

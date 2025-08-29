@@ -40,4 +40,9 @@ public class HamsterDevice implements BiometricDevice {
     public String format() {
         return "Hamster";
     }
+
+    @Override
+    public boolean isInitialized() {
+        return initialized;
+    }
 }

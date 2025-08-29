@@ -18,4 +18,6 @@ public interface BiometricDevice {
      * Nombre del dispositivo (DigitalPersona, Hamster, Mock...).
      */
     String format();
+
+    boolean isInitialized();
 }
